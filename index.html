@@ -58,13 +58,6 @@
             const loader = document.getElementById("loader");
             const errorMsg = document.getElementById("error-msg");
 
-            // Check if URL already has the token parameter
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has("token")) {
-                window.location.replace(`https://saadpie1-pico-claw.hf.space/?${window.location.search}`);
-                return;
-            }
-
             const hfBase = "https://saadpie1-pico-claw.hf.space";
             // Raw link to the auto-saved token file on your GitHub repository
             const githubTokenRaw = "https://raw.githubusercontent.com/saad-pie/deepseek-harness-storage/main/token.txt";
