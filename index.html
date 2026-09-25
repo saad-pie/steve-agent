@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pico-Claw AI Orchestrator | Gateway</title>
+    <title>Pico-Claw Gateway - Saadpie</title>
     <style>
         body {
             background-color: #0d1117;
@@ -16,76 +16,97 @@
             height: 100vh;
             margin: 0;
         }
-        .card {
-            background: #161b22;
-            padding: 40px;
-            border-radius: 12px;
-            border: 1px solid #30363d;
+        .container {
             text-align: center;
+            padding: 40px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            max-width: 400px;
-            width: 100%;
+            max-width: 450px;
+            width: 90%;
         }
-        h2 { margin-top: 0; color: #58a6ff; }
-        p { color: #8b949e; font-size: 14px; margin-bottom: 24px; }
-        .btn {
-            background-color: #238636;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: bold;
-            display: inline-block;
-            transition: background 0.2s;
+        h2 { color: #58a6ff; margin-bottom: 10px; }
+        p { color: #8b949e; font-size: 14px; margin-bottom: 25px; }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #30363d;
+            border-top: 4px solid #58a6ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
         }
-        .btn:hover { background-color: #2ea043; }
-        .status { margin-top: 15px; font-size: 12px; color: #484f58; }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error { color: #f85149; font-size: 13px; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <div class="card">
+    <div class="container">
         <h2>Pico-Claw Gateway</h2>
-        <p>Fetching the latest dynamic security token from your private vault...</p>
-        <div id="action-area">
-            <span class="btn" style="opacity: 0.5; pointer-events: none;">Connecting...</span>
-        </div>
-        <div class="status" id="status-text">Checking repository status</div>
+        <p id="status-text">Fetching the latest dynamic security token from your private vault...</p>
+        <div class="spinner" id="loader"></div>
+        <div class="error" id="error-msg"></div>
     </div>
 
     <script>
-        async function fetchLiveUrl() {
-            const hfBaseUrl = "https://saadpie1-pico-claw.hf.space";
-            // Point this to your raw GitHub file path containing the token string
-            const rawTokenUrl = "https://raw.githubusercontent.com/saad-pie/deepseek-harness-storage/main/token.txt";
+        async function connectGateway() {
+            const statusText = document.getElementById("status-text");
+            const loader = document.getElementById("loader");
+            const errorMsg = document.getElementById("error-msg");
+
+            // Check if URL already has the token parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has("token")) {
+                window.location.replace(`https://saadpie1-pico-claw.hf.space/?${window.location.search}`);
+                return;
+            }
+
+            const hfBase = "https://saadpie1-pico-claw.hf.space";
+            // Raw link to the auto-saved token file on your GitHub repository
+            const githubTokenRaw = "https://raw.githubusercontent.com/saad-pie/deepseek-harness-storage/main/token.txt";
 
             try {
-                const response = await fetch(rawTokenUrl + "?cacheBust=" + Date.now());
-                if (!response.ok) throw new Error("Token file not found yet.");
+                statusText.innerText = "Connecting to GitHub storage vault...";
+                const response = await fetch(githubTokenRaw, { cache: "no-store" });
                 
-                let tokenPart = await response.text();
-                tokenPart = tokenPart.trim(); // e.g., "token=gIsVe6uoj..."
-
-                if (!tokenPart.includes("token=")) {
-                    throw new Error("Invalid token format received.");
+                if (!response.ok) {
+                    throw new Error("Token file not found yet. The Hugging Face space might still be initializing its first sync.");
                 }
 
-                const finalUrl = `${hfBaseUrl}/?${tokenPart}`;
+                let tokenData = (await response.text()).trim(); // Expected format: token=xyz...
                 
-                document.getElementById('action-area').innerHTML = `
-                    <a href="${finalUrl}" class="btn" id="launch-btn">Launch AI Orchestrator 🚀</a>
-                `;
-                document.getElementById('status-text').innerText = "Status: Connected successfully!";
-                
-                // Optional: Auto-redirect after 1 second if desired
-                // window.location.href = finalUrl;
+                if (!tokenData.startsWith("token=")) {
+                    tokenData = `token=${tokenData}`;
+                }
 
-            } catch (error) {
-                document.getElementById('status-text').innerText = "Waiting for Hugging Face space to spin up & sync token...";
-                setTimeout(fetchLiveUrl, 5000); // Retry every 5 seconds until ready
+                statusText.innerText = "Token acquired! Launching gateway...";
+                loader.style.display = "none";
+
+                // Instant redirect to your HF space with the live token attached
+                setTimeout(() => {
+                    window.location.replace(`${hfBase}/?${tokenData}`);
+                }, 600);
+
+            } catch (err) {
+                console.warn(err, "Falling back to direct Hugging Face ping...");
+                
+                // Fallback: Try pinging the space directly if GitHub file isn't populated yet
+                try {
+                    statusText.innerText = "Waiting for Hugging Face space to spin up & sync token...";
+                    const ping = await fetch(hfBase, { method: "HEAD", mode: "no-cors" });
+                    setTimeout(connectGateway, 4000); // Retry loop
+                } catch (fallbackErr) {
+                    loader.style.display = "none";
+                    errorMsg.innerText = "Connection failed. Please ensure your Hugging Face space is running.";
+                }
             }
         }
 
-        fetchLiveUrl();
+        connectGateway();
     </script>
 </body>
 </html>
