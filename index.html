@@ -5,18 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pico-Claw Gateway - Saadpie</title>
     <style>
-        body {
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             background-color: #0d1117;
             color: #c9d1d9;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+        }
+        .loader-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            margin: 0;
+            background: #0d1117;
+            z-index: 10;
+            transition: opacity 0.4s ease;
         }
-        .container {
+        .card {
             text-align: center;
             padding: 40px;
             background: #161b22;
@@ -42,21 +55,37 @@
             100% { transform: rotate(360deg); }
         }
         .error { color: #f85149; font-size: 13px; margin-top: 15px; }
+        
+        iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Pico-Claw Gateway</h2>
-        <p id="status-text">Fetching the latest dynamic security token from your private vault...</p>
-        <div class="spinner" id="loader"></div>
-        <div class="error" id="error-msg"></div>
+    <div class="loader-container" id="loader-screen">
+        <div class="card">
+            <h2>Pico-Claw Gateway</h2>
+            <p id="status-text">Fetching the latest dynamic security token from your private vault...</p>
+            <div class="spinner" id="loader"></div>
+            <div class="error" id="error-msg"></div>
+        </div>
     </div>
+
+    <iframe id="gateway-frame" allow="clipboard-write; microphone; camera"></iframe>
 
     <script>
         async function connectGateway() {
             const statusText = document.getElementById("status-text");
             const loader = document.getElementById("loader");
             const errorMsg = document.getElementById("error-msg");
+            const loaderScreen = document.getElementById("loader-screen");
+            const gatewayFrame = document.getElementById("gateway-frame");
 
             const hfBase = "https://saadpie1-pico-claw.hf.space";
             // Raw link to the auto-saved token file on your GitHub repository
@@ -76,13 +105,19 @@
                     tokenData = `token=${tokenData}`;
                 }
 
-                statusText.innerText = "Token acquired! Launching gateway...";
-                loader.style.display = "none";
-
-                // Instant redirect to your HF space with the live token attached
-                setTimeout(() => {
-                    window.location.replace(`${hfBase}/?${tokenData}`);
-                }, 600);
+                statusText.innerText = "Token acquired! Embedding gateway...";
+                
+                // Set the iframe source to your HF space with the live token parameter
+                gatewayFrame.src = `${hfBase}/?${tokenData}`;
+                
+                // Show iframe and fade out the loader once ready
+                gatewayFrame.onload = () => {
+                    loaderScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        loaderScreen.style.display = 'none';
+                        gatewayFrame.style.display = 'block';
+                    }, 400);
+                };
 
             } catch (err) {
                 console.warn(err, "Falling back to direct Hugging Face ping...");
@@ -90,7 +125,7 @@
                 // Fallback: Try pinging the space directly if GitHub file isn't populated yet
                 try {
                     statusText.innerText = "Waiting for Hugging Face space to spin up & sync token...";
-                    const ping = await fetch(hfBase, { method: "HEAD", mode: "no-cors" });
+                    await fetch(hfBase, { method: "HEAD", mode: "no-cors" });
                     setTimeout(connectGateway, 4000); // Retry loop
                 } catch (fallbackErr) {
                     loader.style.display = "none";
