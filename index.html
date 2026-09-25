@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pico-Claw AI Orchestrator | Gateway</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: #161b22;
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            max-width: 400px;
+            width: 100%;
+        }
+        h2 { margin-top: 0; color: #58a6ff; }
+        p { color: #8b949e; font-size: 14px; margin-bottom: 24px; }
+        .btn {
+            background-color: #238636;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+        .btn:hover { background-color: #2ea043; }
+        .status { margin-top: 15px; font-size: 12px; color: #484f58; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Pico-Claw Gateway</h2>
+        <p>Fetching the latest dynamic security token from your private vault...</p>
+        <div id="action-area">
+            <span class="btn" style="opacity: 0.5; pointer-events: none;">Connecting...</span>
+        </div>
+        <div class="status" id="status-text">Checking repository status</div>
+    </div>
+
+    <script>
+        async function fetchLiveUrl() {
+            const hfBaseUrl = "https://saadpie1-pico-claw.hf.space";
+            // Point this to your raw GitHub file path containing the token string
+            const rawTokenUrl = "https://raw.githubusercontent.com/saad-pie/deepseek-harness-storage/main/token.txt";
+
+            try {
+                const response = await fetch(rawTokenUrl + "?cacheBust=" + Date.now());
+                if (!response.ok) throw new Error("Token file not found yet.");
+                
+                let tokenPart = await response.text();
+                tokenPart = tokenPart.trim(); // e.g., "token=gIsVe6uoj..."
+
+                if (!tokenPart.includes("token=")) {
+                    throw new Error("Invalid token format received.");
+                }
+
+                const finalUrl = `${hfBaseUrl}/?${tokenPart}`;
+                
+                document.getElementById('action-area').innerHTML = `
+                    <a href="${finalUrl}" class="btn" id="launch-btn">Launch AI Orchestrator 🚀</a>
+                `;
+                document.getElementById('status-text').innerText = "Status: Connected successfully!";
+                
+                // Optional: Auto-redirect after 1 second if desired
+                // window.location.href = finalUrl;
+
+            } catch (error) {
+                document.getElementById('status-text').innerText = "Waiting for Hugging Face space to spin up & sync token...";
+                setTimeout(fetchLiveUrl, 5000); // Retry every 5 seconds until ready
+            }
+        }
+
+        fetchLiveUrl();
+    </script>
+</body>
+</html>
