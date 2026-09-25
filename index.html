@@ -27,7 +27,21 @@
             width: 90%;
         }
         h2 { color: #58a6ff; margin-bottom: 10px; }
-        p { color: #8b949e; font-size: 14px; margin-bottom: 25px; }
+        p { color: #8b949e; font-size: 14px; margin-bottom: 25px; line-height: 1.5; }
+        .btn {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: none;
+            width: 100%;
+        }
+        .btn:hover { background-color: #2ea043; }
         .spinner {
             width: 40px;
             height: 40px;
@@ -47,19 +61,20 @@
 <body>
     <div class="container">
         <h2>Pico-Claw Gateway</h2>
-        <p id="status-text">Fetching the latest dynamic security token from your private vault...</p>
+        <p id="status-text">Fetching your security session token...</p>
         <div class="spinner" id="loader"></div>
+        <button id="launch-btn" class="btn">Open Pico-Claw Dashboard</button>
         <div class="error" id="error-msg"></div>
     </div>
 
     <script>
-        async function connectGateway() {
+        async function prepareGateway() {
             const statusText = document.getElementById("status-text");
             const loader = document.getElementById("loader");
+            const launchBtn = document.getElementById("launch-btn");
             const errorMsg = document.getElementById("error-msg");
 
             const hfBase = "https://saadpie1-pico-claw.hf.space";
-            // Raw link to the auto-saved token file on your GitHub repository
             const githubTokenRaw = "https://raw.githubusercontent.com/saad-pie/deepseek-harness-storage/main/token.txt";
 
             try {
@@ -67,32 +82,27 @@
                 const response = await fetch(githubTokenRaw, { cache: "no-store" });
                 
                 if (!response.ok) {
-                    throw new Error("Token file not found yet. The Hugging Face space might still be initializing its first sync.");
+                    throw new Error("Token file not found yet. Hugging Face space might still be initializing.");
                 }
 
-                let tokenData = (await response.text()).trim(); // Expected format: token=xyz...
-                
-                // Ensure it has the proper query format
-                if (!tokenData.startsWith("token=")) {
-                    tokenData = `token=${tokenData}`;
-                }
+                let tokenData = (await response.text()).trim();
+                const cleanToken = tokenData.replace(/^token=/, '');
 
-                statusText.innerText = "Token acquired! Launching gateway...";
+                statusText.innerText = "Session token ready! Click below to bypass DSH security check and open your dashboard.";
                 loader.style.display = "none";
-
-                // Direct top-level navigation with token in the query string
-                setTimeout(() => {
-                    window.location.replace(`${hfBase}/?${tokenData}`);
-                }, 500);
+                
+                // Configure button to open the target URL directly with the token
+                launchBtn.style.display = "block";
+                launchBtn.onclick = () => {
+                    window.location.href = `${hfBase}/?token=${cleanToken}`;
+                };
 
             } catch (err) {
-                console.warn(err, "Falling back to direct Hugging Face ping...");
-                
-                // Fallback: Try pinging the space directly if GitHub file isn't populated yet
+                console.warn(err);
                 try {
-                    statusText.innerText = "Waiting for Hugging Face space to spin up & sync token...";
+                    statusText.innerText = "Waiting for Hugging Face space to spin up...";
                     await fetch(hfBase, { method: "HEAD", mode: "no-cors" });
-                    setTimeout(connectGateway, 4000); // Retry loop
+                    setTimeout(prepareGateway, 4000);
                 } catch (fallbackErr) {
                     loader.style.display = "none";
                     errorMsg.innerText = "Connection failed. Please ensure your Hugging Face space is running.";
@@ -100,7 +110,7 @@
             }
         }
 
-        connectGateway();
+        prepareGateway();
     </script>
 </body>
 </html>
