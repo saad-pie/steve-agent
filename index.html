@@ -72,26 +72,17 @@
 
                 let tokenData = (await response.text()).trim(); // Expected format: token=xyz...
                 
-                // Strip "token=" prefix if present to handle form input cleanly
-                const cleanToken = tokenData.replace(/^token=/, '');
+                // Ensure it has the proper query format
+                if (!tokenData.startsWith("token=")) {
+                    tokenData = `token=${tokenData}`;
+                }
 
-                statusText.innerText = "Token acquired! Launching seamless session...";
+                statusText.innerText = "Token acquired! Launching gateway...";
                 loader.style.display = "none";
 
-                // Programmatically create and submit a form to perform a clean POST/GET navigation with token
+                // Direct top-level navigation with token in the query string
                 setTimeout(() => {
-                    const form = document.createElement("form");
-                    form.method = "GET";
-                    form.action = `${hfBase}/`;
-
-                    const input = document.createElement("input");
-                    input.type = "hidden";
-                    input.name = "token";
-                    input.value = cleanToken;
-
-                    form.appendChild(input);
-                    document.body.appendChild(form);
-                    form.submit();
+                    window.location.replace(`${hfBase}/?${tokenData}`);
                 }, 500);
 
             } catch (err) {
